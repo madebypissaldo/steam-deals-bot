@@ -83,7 +83,7 @@ telegram.handlers ───────► telegram.keyboards / telegram.states
 ## Instalação
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/madebypissaldo/steam-deals-bot.git
 cd Steam_Dev_app
 
 python3 -m venv .venv
