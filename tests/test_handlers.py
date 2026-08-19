@@ -110,3 +110,13 @@ class HandlerFormattingTests(unittest.TestCase):
         states.set_state(999, "results", results=[GAME], title="Ofertas", kind="deals", page=0)
         handle_callback({"id": "callback-id", "data": "page:deals:0", "message": {"chat": {"id": 999, "type": "private"}, "message_id": 42}})
         edit_message.assert_not_called()
+
+    @patch("telegram.handlers.database.set_subscription")
+    @patch("telegram.handlers.answer_callback_query")
+    @patch("telegram.handlers.edit_message_text")
+    @patch("telegram.handlers.best_deals.send_current_best_deals")
+    def test_best_deals_subscription_callback(self, send_current, edit_message, _answer_callback, set_subscription):
+        handle_callback({"id": "callback-id", "data": "bestdeals:subscribe", "from": {"id": 111}, "message": {"chat": {"id": 999, "type": "private"}, "message_id": 42}})
+        set_subscription.assert_called_once_with(111, 999, True)
+        send_current.assert_called_once_with(999)
+        self.assertIn("ativados", edit_message.call_args.args[2])

@@ -46,6 +46,15 @@ def finish_search(user_id: int | str) -> None:
         _global_searches.release()
 
 
+def acquire_background_slot() -> bool:
+    """Reserve global Steam capacity for scheduled work without a user identity."""
+    return _global_searches.acquire(blocking=False)
+
+
+def release_background_slot() -> None:
+    _global_searches.release()
+
+
 def reset_for_tests() -> None:
     """Clear process-local protections for deterministic unit tests."""
     global _global_searches

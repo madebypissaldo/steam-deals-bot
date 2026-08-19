@@ -5,6 +5,7 @@ def main_menu() -> dict:
     return {"inline_keyboard": [
         [{"text": "🔥 Maiores descontos", "callback_data": "menu:deals"}, {"text": "🔎 Pesquisar jogo", "callback_data": "menu:search"}],
         [{"text": "💸 Até R$ 20", "callback_data": "menu:under20"}, {"text": "📉 80% ou mais", "callback_data": "menu:discount80"}],
+        [{"text": "🔔 Alertas Best Deals", "callback_data": "bestdeals:menu"}],
         [{"text": "⭐ Minha Watchlist", "callback_data": "menu:watchlist"}],
     ]}
 
@@ -29,6 +30,11 @@ def unavailable_category_menu() -> dict:
         [{"text": "⬅️ Categorias", "callback_data": "nav:categories"}],
         [{"text": "🏠 Menu", "callback_data": "nav:main"}],
     ]}
+
+
+def best_deals_menu(enabled: bool) -> dict:
+    action = {"text": "🔕 Desativar alertas", "callback_data": "bestdeals:unsubscribe"} if enabled else {"text": "🔔 Ativar alertas", "callback_data": "bestdeals:subscribe"}
+    return {"inline_keyboard": [[action], [{"text": "⬅️ Voltar", "callback_data": "nav:main"}]]}
 
 
 def deal_keyboard(game: dict) -> dict:

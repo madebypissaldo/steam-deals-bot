@@ -5,9 +5,10 @@ import math
 import time
 from typing import Any
 
-from services import steam
+from services import best_deals, steam
 from services.telegram import answer_callback_query, edit_message_text, send_message
 from telegram import keyboards, protection, states
+from storage import database
 
 
 LOGGER = logging.getLogger(__name__)
@@ -15,6 +16,11 @@ PAGE_SIZE = 5
 MAX_DEALS_PAGES = 5
 MAX_DEALS_RESULTS = PAGE_SIZE * MAX_DEALS_PAGES
 MENU_TEXT = "🎮 Steam Deals Bot\n\nO que deseja fazer?"
+
+
+def _best_deals_text(enabled: bool) -> str:
+    status = "✅ Ativos" if enabled else "❌ Desativados"
+    return f"🔥 Best Deals\n\nReceba automaticamente promoções excepcionais encontradas pela pesquisa diária.\n\nAlertas: {status}"
 
 
 def is_private_chat(chat: dict[str, Any]) -> bool:
@@ -181,6 +187,27 @@ def handle_callback(callback: dict[str, Any]) -> None:
             _search_deals(user_id, chat_id, message_id, "📉 Desconto de 80% ou mais", "discount80", min_discount=80)
         elif value == "watchlist":
             edit_message_text(chat_id, message_id, "⭐ Watchlist\n\nEssa funcionalidade ainda está em desenvolvimento.", keyboards.menu_button())
+        return
+    if action == "bestdeals":
+        if value == "menu":
+            enabled = database.is_subscribed(user_id)
+            edit_message_text(chat_id, message_id, _best_deals_text(enabled), keyboards.best_deals_menu(enabled))
+        elif value == "subscribe":
+            database.set_subscription(user_id, chat_id, True)
+            edit_message_text(chat_id, message_id, "✅ Alertas de Best Deals ativados.\n\nVocê receberá uma mensagem quando encontrarmos uma oferta excepcional.", keyboards.best_deals_menu(True))
+            reason = protection.start_search(user_id)
+            if reason:
+                LOGGER.info("Envio inicial de Best Deals adiado user_id=%s reason=%s.", user_id, reason)
+                return
+            try:
+                best_deals.send_current_best_deals(chat_id)
+            except steam.SteamServiceError:
+                LOGGER.exception("Falha ao enviar Best Deals atuais user_id=%s.", user_id)
+            finally:
+                protection.finish_search(user_id)
+        elif value == "unsubscribe":
+            database.set_subscription(user_id, chat_id, False)
+            edit_message_text(chat_id, message_id, "🔕 Alertas de Best Deals desativados.", keyboards.best_deals_menu(False))
         return
     if action == "search" and value == "name":
         states.set_state(chat_id, states.WAITING_GAME_SEARCH)

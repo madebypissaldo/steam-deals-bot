@@ -14,6 +14,7 @@ Aplicação Python para consultar preços e promoções da Steam por meio de um 
 - Long polling com tratamento de falhas temporárias e logs de duração.
 - Proteções em memória: rate limit, limite de concorrência por usuário e limite global de pesquisas.
 - Validação de mensagens, callbacks e tamanho de pesquisas por nome.
+- Alertas opt-in de Best Deals com varredura diária, deduplicação persistente e envio proativo.
 
 ## Demonstração
 
@@ -24,6 +25,7 @@ O que deseja fazer?
 
 [ 🔥 Maiores descontos ] [ 🔎 Pesquisar jogo ]
 [ 💸 Até R$ 20 ]         [ 📉 80% ou mais ]
+[ 🔔 Alertas Best Deals ]
 [ ⭐ Minha Watchlist ]
 ```
 
@@ -40,7 +42,9 @@ telegram.handlers ───────► telegram.keyboards / telegram.states
    │
    ├──► services.telegram ───► Telegram Bot API
    │
-   └──► services.steam ──────► Steam Store API
+   ├──► services.steam / services.best_deals ───► Steam Store API
+   │
+   └──► scheduler.best_deals ───► storage.database (SQLite)
 ```
 
 ## Estrutura do projeto
@@ -50,8 +54,13 @@ telegram.handlers ───────► telegram.keyboards / telegram.states
 ├── data/
 │   └── games_appid.json
 ├── services/
+│   ├── best_deals.py
 │   ├── steam.py
 │   └── telegram.py
+├── scheduler/
+│   └── best_deals.py
+├── storage/
+│   └── database.py
 ├── telegram/
 │   ├── bot.py
 │   ├── handlers.py
@@ -105,6 +114,11 @@ Preencha as variáveis:
 STEAM_API_KEY=
 TELEGRAM_BOT_TOKEN=
 TELEGRAM_CHAT_ID=
+BEST_DEALS_MIN_DISCOUNT=90
+BEST_DEALS_MAX_PRICE=10
+BEST_DEALS_MAX_NOTIFICATIONS=10
+BEST_DEALS_SCAN_HOUR=12
+APP_TIMEZONE=America/Sao_Paulo
 ```
 
 | Variável | Descrição |
@@ -112,6 +126,11 @@ TELEGRAM_CHAT_ID=
 | `STEAM_API_KEY` | Chave usada nas consultas de detalhes da Steam. |
 | `TELEGRAM_BOT_TOKEN` | Token do bot fornecido pelo BotFather. |
 | `TELEGRAM_CHAT_ID` | Opcional. Destino padrão das notificações enviadas pelo modo CLI. Não limita o acesso público ao bot. |
+| `BEST_DEALS_MIN_DISCOUNT` | Desconto mínimo para uma oferta excepcional barata. Padrão: `90`. |
+| `BEST_DEALS_MAX_PRICE` | Preço final máximo, em reais, para essa regra. Padrão: `10`. |
+| `BEST_DEALS_MAX_NOTIFICATIONS` | Máximo de ofertas processadas por varredura. Padrão: `10`. |
+| `BEST_DEALS_SCAN_HOUR` | Hora diária da varredura, de `0` a `23`. Padrão: `12`. |
+| `APP_TIMEZONE` | Timezone do agendador. Padrão: `America/Sao_Paulo`. |
 
 ## Como iniciar
 
@@ -138,6 +157,14 @@ Pelo menu, qualquer usuário em conversa privada pode consultar promoções, pes
 
 As categorias atualmente disponíveis são Ação, RPG, Corrida, Estratégia e Indie. FPS, Survival e Terror dependem de tags que não são retornadas pelos endpoints Steam estruturados utilizados; o bot as identifica como indisponíveis e oferece retorno às categorias, sem executar uma pesquisa incorreta.
 
+## Best Deals Alerts
+
+Consultas normais são iniciadas pelo usuário. Os alertas de **Best Deals** executam uma varredura diária independente e notificam proativamente apenas usuários que ativaram `🔔 Alertas Best Deals` no menu. Ao ativar, o bot também envia as Best Deals atuais disponíveis naquele momento; a mesma tela permite desativar os alertas a qualquer momento.
+
+Uma oferta é considerada Best Deal quando é temporariamente gratuita com preço original positivo, ou quando tem desconto de pelo menos `BEST_DEALS_MIN_DISCOUNT` e preço final de até `BEST_DEALS_MAX_PRICE`. Jogos permanentemente gratuitos não são classificados como promoções gratuitas.
+
+Assinaturas, data da última varredura bem-sucedida e ofertas notificadas são armazenadas em `data/steam_deals_bot.sqlite3`. Uma oferta com o mesmo app, preço final e desconto não é reenviada; uma alteração nesses valores pode gerar um novo alerta. Se o bot estiver offline no horário configurado, a varredura é recuperada no máximo uma vez para o dia atual.
+
 ## Testes
 
 Execute os testes sem acessar a Steam ou o Telegram:
@@ -154,11 +181,14 @@ Execute os testes sem acessar a Steam ou o Telegram:
 - Pesquisas são limitadas a uma operação a cada dois segundos por usuário, com burst de até cinco operações em dez segundos.
 - Cada usuário pode ter uma pesquisa ativa e o processo executa no máximo quatro pesquisas Steam simultâneas.
 - A lista de promoções é mantida em cache compartilhado por cinco minutos.
+- Alertas são opt-in e podem ser desativados pelo próprio usuário.
+- O banco SQLite armazena somente dados de assinatura e histórico de ofertas; tokens permanecem no `.env` e fora do Git.
 
 ## Roadmap
 
 - [ ] Watchlist persistente.
-- [ ] Alertas personalizados de preço.
+- [x] Alertas globais de Best Deals.
+- [ ] Alertas personalizados por jogo ou preço.
 - [ ] Histórico de preços.
 - [ ] Persistência do cache.
 - [ ] Webhook como alternativa futura ao long polling.

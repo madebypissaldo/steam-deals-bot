@@ -6,7 +6,7 @@ from telegram.keyboards import main_menu, results_keyboard, search_menu, unavail
 class KeyboardTests(unittest.TestCase):
     def test_main_menu_has_expected_callbacks(self):
         callbacks = {button["callback_data"] for row in main_menu()["inline_keyboard"] for button in row}
-        self.assertTrue({"menu:deals", "menu:search", "menu:under20", "menu:discount80", "menu:watchlist"} <= callbacks)
+        self.assertTrue({"menu:deals", "menu:search", "menu:under20", "menu:discount80", "bestdeals:menu", "menu:watchlist"} <= callbacks)
 
     def test_search_menu_has_navigation(self):
         callbacks = {button["callback_data"] for row in search_menu()["inline_keyboard"] for button in row}

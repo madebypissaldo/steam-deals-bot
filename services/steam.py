@@ -92,6 +92,7 @@ def game_from_details(app_id: int | str, data: dict[str, Any] | None) -> dict[st
         "app_id": app_id,
         "name": data.get("name", "Jogo não identificado"),
         "initial_formatted": price.get("initial_formatted", "Indisponível"),
+        "initial_cents": price.get("initial"),
         "final_formatted": price.get("final_formatted", "Indisponível"),
         "final_cents": price.get("final"),
         "discount_percent": price.get("discount_percent", 0),
@@ -106,10 +107,11 @@ def search_deals(
     max_price: float | None = None,
     category: str | None = None,
     limit: int = 10,
+    refresh: bool = False,
 ) -> list[dict[str, Any]]:
     """Return filtered games from Steam's real featured-specials feed."""
     started_at = time.monotonic()
-    games = _get_featured_deals()
+    games = _get_featured_deals(refresh=refresh)
     filtered = []
     expected_genre = CATEGORY_GENRES.get(category, "").casefold() if category else None
     for game in games:
@@ -125,11 +127,11 @@ def search_deals(
     return filtered[:limit]
 
 
-def _get_featured_deals() -> list[dict[str, Any]]:
+def _get_featured_deals(refresh: bool = False) -> list[dict[str, Any]]:
     now = time.monotonic()
     with _cache_lock:
         cached_games = _featured_deals_cache["games"]
-        if cached_games is not None and now - _featured_deals_cache["timestamp"] < FEATURED_DEALS_CACHE_TTL_SECONDS:
+        if not refresh and cached_games is not None and now - _featured_deals_cache["timestamp"] < FEATURED_DEALS_CACHE_TTL_SECONDS:
             LOGGER.info("Cache de promoções utilizado.")
             return cached_games
 

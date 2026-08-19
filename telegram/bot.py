@@ -7,6 +7,8 @@ from concurrent.futures import ThreadPoolExecutor
 import dotenv
 
 from services.telegram import get_updates
+from scheduler.best_deals import start as start_best_deals_scheduler
+from storage.database import initialize as initialize_database
 from telegram.handlers import handle_update
 
 
@@ -18,6 +20,8 @@ RETRY_DELAY_SECONDS = 5
 def run_bot() -> None:
     dotenv.load_dotenv()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s: %(message)s")
+    initialize_database()
+    start_best_deals_scheduler()
     offset = None
     LOGGER.info("Steam Deals Bot")
     LOGGER.info("Telegram bot iniciado.")
